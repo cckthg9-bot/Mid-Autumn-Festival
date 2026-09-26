@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>2026 中秋佳節 智勇闖關大作戰</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Noto Sans TC & Ma Shan Zheng for festive header -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+TC:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background-color: #0B1021;
+      color: #F3F4F6;
+      overflow-x: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    .font-festive {
+      font-family: 'Ma Shan Zheng', cursive, 'Noto Sans TC', sans-serif;
+    }
+
+    /* Glow & Gradient Effects */
+    .moon-glow {
+      box-shadow: 0 0 60px 15px rgba(254, 240, 138, 0.4), inset 0 0 20px rgba(253, 224, 71, 0.6);
+    }
+
+    .card-glass {
+      background: rgba(20, 27, 54, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #FDE047 0%, #EAB308 50%, #CA8A04 100%);
+      color: #3B0764;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+      box-shadow: 0 4px 15px rgba(234, 179, 8, 0.4);
+      transition: all 0.2s ease-out;
+    }
+
+    .btn-gold:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(234, 179, 8, 0.6);
+    }
+
+    .btn-gold:active {
+      transform: translateY(1px);
+    }
+
+    /* Floating Animations */
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-12px) rotate(2deg); }
+    }
+
+    @keyframes pulse-light {
+      0%, 100% { opacity: 0.8; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.05); }
+    }
+
+    @keyframes mortar-pound {
+      0% { transform: translateY(0) rotate(0deg); }
+      30% { transform: translateY(-25px) rotate(-10deg); }
+      50% { transform: translateY(10px) rotate(5deg); }
+      70% { transform: translateY(-5px) rotate(0deg); }
+      100% { transform: translateY(0) rotate(0deg); }
+    }
+
+    .animate-float { animation: float 4s ease-in-out infinite; }
+    .animate-pulse-slow { animation: pulse-light 3s ease-in-out infinite; }
+    .animate-pound { animation: mortar-pound 0.25s ease-in-out; }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(11, 16, 33, 0.6); }
+    ::-webkit-scrollbar-thumb { background: rgba(234, 179, 8, 0.5); border-radius: 4px; }
+  </style>
+
+  <!-- Firebase Integration -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    window.initFirebase = async function() {
+      try {
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'mid-autumn-2026';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        if (firebaseConfig) {
+          const app = initializeApp(firebaseConfig);
+          const auth = getAuth(app);
+          const db = getFirestore(app);
+
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } else {
+            await signInAnonymously(auth);
+          }
+
+          window.remoteDb = db;
+          window.appId = appId;
+          console.log("Firebase storage initialised successfully.");
+        }
+      } catch (e) {
+        console.warn("Cloud storage fallback to LocalStorage:", e);
+      }
+    };
+  </script>
+</head>
+<body class="min-h-screen flex flex-col justify-between relative selection:bg-amber-400 selection:text-purple-950">
+
+  <!-- Starry Night & Lantern Canvas Background -->
+  <canvas id="bgCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
+  <!-- Floating Moon Asset Header (Easter Egg Trigger) -->
+  <div class="fixed top-2 right-4 md:top-6 md:right-10 z-20 opacity-80 md:opacity-100">
+    <div id="easterEggMoon" onclick="handleMoonClick()" title="連按三下解鎖月宮秘境彩蛋！" class="w-20 h-20 md:w-32 md:h-32 rounded-full bg-amber-200 moon-glow relative animate-pulse-slow flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-transform select-none">
+      <div class="absolute w-4 h-4 md:w-6 md:h-6 rounded-full bg-amber-300 opacity-40 top-4 left-5 pointer-events-none"></div>
+      <div class="absolute w-6 h-6 md:w-10 md:h-10 rounded-full bg-amber-300 opacity-30 bottom-5 right-6 pointer-events-none"></div>
+      <span class="text-2xl md:text-4xl select-none pointer-events-none">🐇</span>
+    </div>
+  </div>
+
+  <!-- Header Banner -->
+  <header class="relative z-10 pt-4 pb-2 px-4 text-center">
+    <div class="inline-block bg-amber-500/10 border border-amber-400/30 px-4 py-1 rounded-full text-amber-300 text-xs md:text-sm font-semibold tracking-wider mb-2 shadow-inner">
+      ✨ 2026中秋節教育活動_線上平台 ✨
+    </div>
+    <h1 class="text-3xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-400 to-amber-100 tracking-wide drop-shadow-md">
+      食燈籠，玩月餅
+    </h1>
+  </header>
+
+  <!-- Main Interactive App Container -->
+  <main class="relative z-10 max-w-2xl w-full mx-auto px-4 my-auto py-4">
+
+    <!-- VIEW 1: WELCOME & NICKNAME ENTRY -->
+    <div id="viewWelcome" class="card-glass rounded-3xl p-6 md:p-8 text-center shadow-2xl relative overflow-hidden border border-amber-400/30">
+      <div class="text-5xl md:text-6xl my-3 animate-float">🏮</div>
+      <h2 class="text-2xl md:text-3xl font-bold text-amber-200 mb-2">歡迎來到月宮考驗！</h2>
+      <p class="text-gray-300 text-sm md:text-base mb-6 leading-relaxed">
+        融合文化、燈謎、烘焙排序、古典詩詞與手速遊戲的 5 大趣味關卡。<br>
+        輸入暱稱，挑戰你的中秋知識與反應力，爭奪月宮英雄榜冠軍！
+      </p>
+
+      <div class="space-y-4 max-w-md mx-auto">
+        <div class="relative">
+          <i class="fa-solid fa-user-astronaut absolute left-4 top-1/2 -translate-y-1/2 text-amber-400 text-lg"></i>
+          <input type="text" id="inputNickname" maxlength="12" placeholder="請輸入挑戰者暱稱 (如: 月宮小將)" 
+            class="w-full bg-slate-900/80 border-2 border-amber-400/40 focus:border-amber-400 rounded-xl py-3 pl-12 pr-4 text-white placeholder-gray-500 outline-none transition text-base font-semibold">
+        </div>
+        
+        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+          <button id="btnStartGame" onclick="startGame()" class="btn-gold flex-1 py-3 px-6 rounded-xl font-bold text-lg flex items-center justify-center gap-2">
+            <i class="fa-solid fa-play"></i> 開始挑戰
+          </button>
+          <button onclick="openLeaderboard()" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/40 flex-1 py-3 px-6 rounded-xl font-bold text-base transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-trophy text-amber-400"></i> 排行榜
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 2: GAMEPLAY CONTAINER (STAGES 1 to 5) -->
+    <div id="viewGame" class="hidden card-glass rounded-3xl p-5 md:p-7 shadow-2xl relative border border-amber-400/30">
+      <!-- Game Top Bar -->
+      <div class="flex items-center justify-between border-b border-amber-400/20 pb-4 mb-5">
+        <div class="flex items-center gap-2">
+          <span class="bg-amber-400/20 border border-amber-400/40 text-amber-300 font-bold px-3 py-1 rounded-full text-xs md:text-sm" id="badgeStage">
+            第 1 / 5 關
+          </span>
+          <span class="text-gray-300 text-xs md:text-sm font-medium" id="lblPlayerName">玩家: --</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="text-amber-300 font-extrabold text-base md:text-lg">
+            得分: <span id="lblScore" class="text-amber-400 text-xl md:text-2xl">0</span>
+          </div>
+          <div class="bg-purple-950/80 border border-purple-400/40 text-purple-200 font-bold px-3 py-1 rounded-lg text-xs md:text-sm flex items-center gap-1">
+            <i class="fa-regular fa-clock text-amber-400"></i>
+            <span id="lblTimer">30s</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAGE CONTENT AREA -->
+      <div id="stageContainer" class="min-h-[320px] flex flex-col justify-between">
+        <!-- Stage views inserted dynamically via JS -->
+      </div>
+    </div>
+
+    <!-- VIEW 3: RESULT SCREEN -->
+    <div id="viewResult" class="hidden card-glass rounded-3xl p-6 md:p-8 text-center shadow-2xl relative border border-amber-400/40">
+      <div class="text-6xl my-2">🥮</div>
+      <h2 class="text-3xl font-extrabold text-amber-300 mb-1">挑戰完成！</h2>
+      <p class="text-gray-300 text-sm mb-4">恭喜完成 2026 中秋 5 大大關卡測驗！</p>
+
+      <div class="bg-slate-900/80 border border-amber-400/30 rounded-2xl p-5 my-4 max-w-md mx-auto space-y-3">
+        <div class="text-gray-400 text-sm">最終結算總分</div>
+        <div id="finalScore" class="text-5xl font-black text-amber-400 tracking-wider">0</div>
+        
+        <div class="pt-2 border-t border-slate-700/60 flex items-center justify-center gap-2">
+          <span class="text-gray-300 text-sm">榮獲專屬稱號：</span>
+          <span id="playerTitle" class="bg-gradient-to-r from-amber-300 to-yellow-500 text-purple-950 font-black px-3 py-1 rounded-full text-base shadow">
+            月宮特使
+          </span>
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto mt-6">
+        <button onclick="startGame()" class="btn-gold flex-1 py-3 px-6 rounded-xl font-bold text-base flex items-center justify-center gap-2">
+          <i class="fa-solid fa-rotate-right"></i> 再玩一次
+        </button>
+        <button onclick="openLeaderboard()" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-400/40 flex-1 py-3 px-6 rounded-xl font-bold text-base transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-list-ol"></i> 查看排行榜
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- LEADERBOARD MODAL -->
+  <div id="modalLeaderboard" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="card-glass w-full max-w-lg rounded-3xl p-6 border border-amber-400/40 shadow-2xl relative max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-amber-400/20 pb-4 mb-4">
+        <h3 class="text-2xl font-bold text-amber-300 flex items-center gap-2">
+          <i class="fa-solid fa-crown text-amber-400"></i> 月宮榜首英雄榜
+        </h3>
+        <button onclick="closeLeaderboard()" class="text-gray-400 hover:text-white text-xl p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto flex-1 pr-1" id="leaderboardList">
+        <!-- Dynamic rows loaded here -->
+      </div>
+
+      <div class="pt-4 border-t border-amber-400/20 text-center">
+        <button onclick="closeLeaderboard()" class="bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 border border-amber-400/40 py-2 px-8 rounded-xl font-bold text-sm transition">
+          關閉返回
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* Global Data Structures */
+    // userProfile: { name: string, score: number }
+    // leaderboard: Array<{ name: string, score: number, date: string }>
+
+    let userProfile = { name: '', score: 0 };
+    let currentStage = 1;
+    let stageTimer = null;
+    let timeLeft = 0;
+    let stageScore = 0;
+    let hasCompletedSecret = false; // 紀錄隱藏彩蛋是否已經作答過
+
+    /* Sound Effects Engine using Web Audio API */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(type) {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'correct') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.2); // A5
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } else if (type === 'wrong') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.linearRampToValueAtTime(110, now + 0.25);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else if (type === 'pound') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      } else if (type === 'win') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(554.37, now + 0.1);
+        osc.frequency.setValueAtTime(659.25, now + 0.2);
+        osc.frequency.setValueAtTime(880, now + 0.35);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+        osc.start(now);
+        osc.stop(now + 0.6);
+      }
+    }
+
+    /* Helper Function: Array Random Sampler & Shuffler */
+    function getRandomSample(array, count) {
+      const shuffled = [...array].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, count);
+    }
+
+    function shuffleArray(array) {
+      return [...array].sort(() => 0.5 - Math.random());
+    }
+
+    /* GAME DATA POOLS FOR RANDOMIZATION */
+
+    // Stage 1 Pool: Culture Scenario Q&A (Randomly picks 3 each game)
+    const stage1Pool = [
+      {
+        question: "在中秋傳統傳說中，哪一位仙女吃了仙藥後飛往月宮，成為月亮的神仙？",
+        options: ["織女", "嫦娥", "九天玄女", "麻姑"],
+        answer: 1,
+        desc: "解析：嫦娥吞服西王母賜予的不死藥後身輕飛天，奔入月宮。"
+      },
+      {
+        question: "華人傳統節慶中，中秋節是農曆的哪一天？",
+        options: ["五月初五", "七月十五", "八月十五", "九月九日"],
+        answer: 2,
+        desc: "解析：農曆八月十五正值秋季正中，故稱為「中秋」。"
+      },
+      {
+        question: "下列何者「不是」常見的中秋節傳統習俗？",
+        options: ["賞月與吃月餅", "柚子戴頭上祈福", "划龍舟與包粽子", "家人團圓飲桂花酒"],
+        answer: 2,
+        desc: "解析：划龍舟與包粽子是端午節的傳統習俗。"
+      },
+      {
+        question: "傳說中玉兔在月宮裡終日拿著玉杵搗藥，請問牠搗的是什麼？",
+        options: ["長生不老仙藥", "桂花釀酒膏", "養顏美容膏", "中藥草補湯"],
+        answer: 0,
+        desc: "解析：傳統神話中玉兔在廣寒宮跪搗仙藥，祈求人間和平健康。"
+      },
+      {
+        question: "傳說唐朝哪一位皇帝曾在八月十五夜夢遊月宮，聽得天籟之音後譜成著名的《霓裳羽衣曲》？",
+        options: ["唐太宗李世民", "唐玄宗李隆基", "唐高宗李治", "唐德宗李適"],
+        answer: 1,
+        desc: "解析：相傳唐玄宗中秋夜夢遊月宮，獲得靈感創作《霓裳羽衣曲》。"
+      },
+      {
+        question: "中秋節吃柚子（文旦）廣受歡迎，主要因為柚子的諧音象徵什麼吉祥意涵？",
+        options: ["「佑子」保佑平安", "「悠哉」輕鬆自在", "「有錢」財源廣進", "「優秀」學業進步"],
+        answer: 0,
+        desc: "解析：柚子與「佑子」諧音，象徵神明與祖先保佑子孫平安。"
+      },
+      {
+        question: "中秋節在華人文化中，又常被稱作下列哪一個節日？",
+        options: ["團圓節", "上元節", "重陽節", "乞巧節"],
+        answer: 0,
+        desc: "解析：因為月圓象徵人團圓，所以中秋節又被尊稱為團圓節。"
+      }
+    ];
+
+    // Stage 2 Pool: Lantern Riddles (Randomly picks 3 each game)
+    const stage2Pool = [
+      {
+        riddle: "「寂寞嫦娥舒廣袖」（猜一個台灣地方名或月球名詞）",
+        hint: "提示：猜字詞：【半月】",
+        options: ["半月", "打狗", "月光", "桂花"],
+        answer: "半月"
+      },
+      {
+        riddle: "「中秋月餅」（猜一成語）",
+        hint: "提示：形容大家聚在一起共享美食，極其圓滿！",
+        options: ["花好月圓", "勝券在握", "團團圓圓", "迎刃而解"],
+        answer: "團團圓圓"
+      },
+      {
+        riddle: "「平地起高樓」（猜一中秋相關字詞）",
+        hint: "提示：與建築或天宮有關",
+        options: ["廣寒宮", "月台", "露台", "天宮"],
+        answer: "廣寒宮"
+      },
+      {
+        riddle: "「十五的月亮」（猜一成語）",
+        hint: "提示：形容光明磊落、毫無遮掩",
+        options: ["正大光明", "明月高照", "光芒四射", "一輪明月"],
+        answer: "正大光明"
+      },
+      {
+        riddle: "「中秋賞月」（猜一漢字）",
+        hint: "提示：兩個月字組合在一起",
+        options: ["朋", "明", "玥", "鵬"],
+        answer: "朋"
+      },
+      {
+        riddle: "「嫦娥下凡」（猜一花名）",
+        hint: "提示：美麗的花卉名稱",
+        options: ["月季", "桂花", "水仙", "牡丹"],
+        answer: "月季"
+      }
+    ];
+
+    // Stage 3 Recipes (Randomly picks 1 recipe pool per game and shuffles step initial display)
+    const stage3RecipesPool = [
+      {
+        title: "廣式月餅烘焙工坊",
+        steps: [
+          { id: 1, text: "準備麵粉、糖漿與花生油揉製月餅餅皮麵團" },
+          { id: 2, text: "將餅皮延展，包裹香濃蓮蓉與鹹蛋黃內餡" },
+          { id: 3, text: "將包好的麵團放入木製月餅模具壓印出精美花紋" },
+          { id: 4, text: "放入烤箱初次烘烤，使餅皮定型" },
+          { id: 5, text: "取出刷上金色蛋黃液，再烤至金黃誘人" }
+        ]
+      },
+      {
+        title: "台式蛋黃酥製作工坊",
+        steps: [
+          { id: 1, text: "製作水油皮與油酥麵團並進行多次桿捲開酥" },
+          { id: 2, text: "將鹹蛋黃噴酒烘烤去腥後包入豆沙餡中" },
+          { id: 3, text: "用開酥後的餅皮包入豆沙蛋黃餡並收口圓整" },
+          { id: 4, text: "表面刷上兩層濃郁蛋黃液並撒上黑芝麻點綴" },
+          { id: 5, text: "送入預熱好的烤箱烘烤至層次分明、金黃酥脆" }
+        ]
+      },
+      {
+        title: "港式冰皮月餅工坊",
+        steps: [
+          { id: 1, text: "將糯米粉、粘米粉與牛奶混合蒸熟揉成Q彈冰皮" },
+          { id: 2, text: "準備奶黃或抹茶等精緻內餡並分成等重圓球" },
+          { id: 3, text: "將冰皮分成小劑子壓扁，均勻包裹餡料" },
+          { id: 4, text: "沾少許熟糯米粉後放入模具壓印出精緻造型" },
+          { id: 5, text: "放入冰箱冷藏密封冰鎮後即可享有清爽口感" }
+        ]
+      }
+    ];
+
+    // Stage 4 Pool: Poetry Gap-Fill (Randomly picks 3 each game)
+    const stage4Pool = [
+      {
+        poem: "明月幾時有？把酒問____。",
+        options: ["青天", "蒼天", "明月", "上天"],
+        answer: "青天",
+        title: "蘇軾《水調歌頭》"
+      },
+      {
+        poem: "舉頭望明月，低頭思____。",
+        options: ["親友", "故鄉", "雙親", "長安"],
+        answer: "故鄉",
+        title: "李白《靜夜思》"
+      },
+      {
+        poem: "海上生明月，天涯共____。",
+        options: ["此時", "此夜", "佳期", "賞月"],
+        answer: "此時",
+        title: "張九齡《望月懷遠》"
+      },
+      {
+        poem: "但願人長久，千里共____。",
+        options: ["嬋娟", "明月", "此時", "佳期"],
+        answer: "嬋娟",
+        title: "蘇軾《水調歌頭》"
+      },
+      {
+        poem: "露從今夜白，月是____明。",
+        options: ["故鄉", "故園", "長安", "故人"],
+        answer: "故鄉",
+        title: "杜甫《月夜憶舍弟》"
+      },
+      {
+        poem: "春風又綠江南岸，明月何時照____還。",
+        options: ["我", "人", "客", "家"],
+        answer: "我",
+        title: "王安石《泊船瓜洲》"
+      }
+    ];
+
+    // Secret Stage Pool: Random Easter Egg Questions
+    const secretStagePool = [
+      {
+        title: "吳剛的神祕桂花酒解謎",
+        subtitle: "傳說廣寒宮桂樹砍倒即合，吳剛特製了一道秘境謎題，答對可獲得 500 分超高獎勵！",
+        question: "「月亮上的神奇桂樹每砍一下會掉落 1 朵桂花，但 3 秒後自動癒合。請問要如何才能順利釀出飄香萬里的中秋桂花酒？」",
+        options: [
+          "不眠不休連續砍樹 100 天",
+          "與玉兔合作，用搗藥臼接住落花接力釀酒 🍶",
+          "請嫦娥用仙法把桂樹凍住",
+          "向月宮小兔購買現成的酒"
+        ],
+        answer: 1
+      },
+      {
+        title: "嫦娥的廣寒宮星空密碼",
+        subtitle: "廣寒宮的門鎖由月相天文變化控制，答對解開月宮之鎖可獲得 500 分超高獎勵！",
+        question: "「從農曆月初到月中，月亮形態變化的正確天文順序應該是？」",
+        options: [
+          "新月 ➔ 娥眉月 ➔ 上弦月 ➔ 滿月 🌕",
+          "滿月 ➔ 殘月 ➔ 下弦月 ➔ 新月",
+          "上弦月 ➔ 滿月 ➔ 新月 ➔ 娥眉月",
+          "新月 ➔ 滿月 ➔ 下弦月 ➔ 娥眉月"
+        ],
+        answer: 0
+      },
+      {
+        title: "玉兔的終極搗藥仙方",
+        subtitle: "玉兔正在調配廣寒宮秘製仙藥，答對隱藏配方即可獲得 500 分加分！",
+        question: "「玉兔在搗藥臼裡悄悄放入了一種人間的中秋時令特產，能讓仙藥變得無比香甜，請問是什麼？」",
+        options: [
+          "苦瓜仙草濃縮汁",
+          "金黃香甜的文旦柚肉與桂花蜜 🍯",
+          "特香麻辣鍋湯底",
+          "超濃郁黑咖啡"
+        ],
+        answer: 1
+      },
+      {
+        title: "太空人的廣寒宮茶會",
+        subtitle: "太空人登月拜訪月宮，提出了中秋文化大考驗，答對獲得 500 分！",
+        question: "「如果人類太空人在月球表面舉辦中秋茶會，下列何者最適合成為月球環境下的特別點心？」",
+        options: [
+          "太空真空保存的精緻廣式月餅 🚀🥮",
+          "需要在高溫大火上快炒的宮保雞丁",
+          "會迅速融化的熱融冰淇淋",
+          "需要大量流水沖洗的涼麵"
+        ],
+        answer: 0
+      }
+    ];
+
+    // Active Stage Data Container (Populated fresh on game start)
+    let stage1ActiveData = [];
+    let stage2ActiveData = [];
+    let stage3ActiveRecipe = null;
+    let stage4ActiveData = [];
+    let currentSecretQuestion = null;
+
+    // Stage 5: Jade Rabbit Mortar Tapping
+    let stage5Taps = 0;
+    let stage5TimerInterval = null;
+
+    /* EASTER EGG & SECRET STAGE LOGIC */
+    let moonClickCount = 0;
+    let moonClickTimer = null;
+
+    function handleMoonClick() {
+      // 限制：僅能在開始遊戲前（歡迎畫面顯示時）觸發彩蛋
+      const welcomeView = document.getElementById('viewWelcome');
+      if (!welcomeView || welcomeView.classList.contains('hidden')) {
+        return;
+      }
+
+      // 限制只可作答一次
+      if (hasCompletedSecret) {
+        showCustomAlert("✨ 您已經挑戰過秘境彩蛋囉！請輸入暱稱開始正式關卡！");
+        return;
+      }
+
+      moonClickCount++;
+
+      // Visual pulse effect on click
+      const moon = document.getElementById('easterEggMoon');
+      if (moon) {
+        moon.classList.add('scale-110');
+        setTimeout(() => moon.classList.remove('scale-110'), 150);
+      }
+
+      if (moonClickTimer) clearTimeout(moonClickTimer);
+
+      if (moonClickCount >= 3) {
+        moonClickCount = 0;
+        triggerEasterEgg();
+      } else {
+        moonClickTimer = setTimeout(() => {
+          moonClickCount = 0;
+        }, 1000);
+      }
+    }
+
+    function triggerEasterEgg() {
+      showCustomAlert("✨ 恭喜發現隱藏小彩蛋！解鎖【秘境彩蛋關卡】！");
+
+      userProfile.isSecretUnlocked = true;
+      // 隨機選取一題彩蛋題目
+      currentSecretQuestion = getRandomSample(secretStagePool, 1)[0];
+
+      // Switch to game view
+      document.getElementById('viewWelcome').classList.add('hidden');
+      document.getElementById('viewResult').classList.add('hidden');
+      document.getElementById('viewGame').classList.remove('hidden');
+
+      document.getElementById('lblPlayerName').innerText = `彩蛋試煉中`;
+      updateScoreDisplay();
+
+      clearIntervals();
+      startSecretStage();
+    }
+
+    function startSecretStage() {
+      document.getElementById('badgeStage').innerText = `🌟 隱藏彩蛋關卡`;
+      const container = document.getElementById('stageContainer');
+      startStageTimer(20, () => finishSecretStage());
+
+      const sq = currentSecretQuestion || secretStagePool[0];
+
+      container.innerHTML = `
+        <div class="text-center space-y-4">
+          <div class="inline-block bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 text-purple-950 px-4 py-1 rounded-full font-black text-xs md:text-sm animate-bounce shadow-md">
+            🌟 秘境彩蛋特別加分關 🌟
+          </div>
+          <h3 class="text-xl md:text-2xl font-bold text-amber-200">${sq.title}</h3>
+          <p class="text-gray-300 text-xs md:text-sm">${sq.subtitle}</p>
+          
+          <div class="bg-amber-500/10 border border-amber-400/40 rounded-2xl p-4 my-2 text-left space-y-2">
+            <div class="text-amber-300 font-bold text-sm md:text-base">【秘境難題】</div>
+            <div class="text-white font-semibold text-sm md:text-base">${sq.question}</div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            ${sq.options.map((opt, idx) => `
+              <button onclick="checkSecretAnswer(${idx})" class="bg-slate-800/90 hover:bg-amber-500/30 border border-amber-400/40 text-amber-100 font-bold p-3 rounded-xl transition text-sm text-left flex items-start gap-2">
+                <span class="text-amber-400 font-black">${['A', 'B', 'C', 'D'][idx]}.</span>
+                <span>${opt}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function checkSecretAnswer(choice) {
+      clearIntervals();
+      hasCompletedSecret = true; // 標記為已完成彩蛋作答
+      const sq = currentSecretQuestion || secretStagePool[0];
+
+      if (choice === sq.answer) {
+        userProfile.score += 500;
+        updateScoreDisplay();
+        playSound('correct');
+        showCustomAlert("🎉 答對了！智慧過人，獲得彩蛋獎勵 +500 分！");
+      } else {
+        userProfile.score += 100;
+        updateScoreDisplay();
+        playSound('wrong');
+        showCustomAlert("可惜答錯囉！不過依然獲得秘境參與獎 +100 分！");
+      }
+
+      setTimeout(() => {
+        finishSecretStage();
+      }, 1600);
+    }
+
+    function finishSecretStage() {
+      clearIntervals();
+      hasCompletedSecret = true; // 確保時間到自動結束時也標記為已作答
+      // 完成彩蛋關卡後返回首頁，要求輸入暱稱
+      document.getElementById('viewGame').classList.add('hidden');
+      document.getElementById('viewResult').classList.add('hidden');
+      document.getElementById('viewWelcome').classList.remove('hidden');
+
+      showCustomAlert("✨ 彩蛋關卡完成！請輸入暱稱開始正式挑戰！");
+      const nicknameInput = document.getElementById('inputNickname');
+      if (nicknameInput) {
+        nicknameInput.focus();
+      }
+    }
+
+    /* GAME CORE ENGINE */
+
+    function startGame() {
+      const nameInput = document.getElementById('inputNickname').value.trim();
+      if (!nameInput) {
+        showCustomAlert("請輸入您的暱稱以開始遊戲！");
+        return;
+      }
+
+      userProfile.name = nameInput;
+      // 若未解鎖彩蛋則歸零；若已解鎖彩蛋則保留彩蛋所得獎勵分
+      if (!userProfile.isSecretUnlocked) {
+        userProfile.score = 0;
+      }
+      currentStage = 1;
+
+      // 每次開始遊戲時，隨機抽取全新題目組合
+      stage1ActiveData = getRandomSample(stage1Pool, 3);
+      stage2ActiveData = getRandomSample(stage2Pool, 3);
+      stage4ActiveData = getRandomSample(stage4Pool, 3);
+
+      // 隨機選擇一種烘焙食譜
+      stage3ActiveRecipe = getRandomSample(stage3RecipesPool, 1)[0];
+
+      document.getElementById('viewWelcome').classList.add('hidden');
+      document.getElementById('viewResult').classList.add('hidden');
+      document.getElementById('viewGame').classList.remove('hidden');
+
+      document.getElementById('lblPlayerName').innerText = `挑戰者: ${userProfile.name}`;
+      updateScoreDisplay();
+
+      loadStage(currentStage);
+    }
+
+    function updateScoreDisplay() {
+      document.getElementById('lblScore').innerText = userProfile.score;
+    }
+
+    function clearIntervals() {
+      if (stageTimer) clearInterval(stageTimer);
+      if (stage5TimerInterval) clearInterval(stage5TimerInterval);
+    }
+
+    /* STAGE RENDERING logic */
+
+    function loadStage(stageNum) {
+      clearIntervals();
+      currentStage = stageNum;
+      document.getElementById('badgeStage').innerText = `第 ${stageNum} / 5 關`;
+
+      const container = document.getElementById('stageContainer');
+      container.innerHTML = '';
+
+      if (stageNum === 1) renderStage1(container);
+      else if (stageNum === 2) renderStage2(container);
+      else if (stageNum === 3) renderStage3(container);
+      else if (stageNum === 4) renderStage4(container);
+      else if (stageNum === 5) renderStage5(container);
+    }
+
+    /* --- STAGE 1: Culture Q&A --- */
+    let s1Index = 0;
+    function renderStage1(container) {
+      s1Index = 0;
+      startStageTimer(30, () => finishStage1(false));
+      showStage1Question(container);
+    }
+
+    function showStage1Question(container) {
+      if (s1Index >= stage1ActiveData.length) {
+        finishStage1(true);
+        return;
+      }
+
+      const q = stage1ActiveData[s1Index];
+      container.innerHTML = `
+        <div>
+          <div class="text-amber-300 text-sm font-semibold mb-1"><i class="fa-solid fa-book-open"></i> 第 1 關：中秋文化隨堂考 (${s1Index + 1}/${stage1ActiveData.length})</div>
+          <h3 class="text-lg md:text-xl font-bold text-white mb-4">${q.question}</h3>
+          
+          <div class="space-y-3">
+            ${q.options.map((opt, idx) => `
+              <button onclick="checkStage1Answer(${idx})" class="w-full text-left bg-slate-800/80 hover:bg-amber-500/20 border border-amber-400/30 hover:border-amber-400 text-gray-200 font-semibold py-3 px-4 rounded-xl transition duration-150 flex items-center justify-between group">
+                <span>${['A', 'B', 'C', 'D'][idx]}. ${opt}</span>
+                <i class="fa-solid fa-chevron-right text-gray-500 group-hover:text-amber-400"></i>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function checkStage1Answer(selectedIdx) {
+      const q = stage1ActiveData[s1Index];
+      if (selectedIdx === q.answer) {
+        playSound('correct');
+        const points = 100 + Math.max(0, timeLeft * 2);
+        userProfile.score += points;
+        updateScoreDisplay();
+      } else {
+        playSound('wrong');
+      }
+      s1Index++;
+      const container = document.getElementById('stageContainer');
+      showStage1Question(container);
+    }
+
+    function finishStage1(completed) {
+      clearIntervals();
+      nextStageTransition("第一關完成！獲得文化成就！", 2);
+    }
+
+    /* --- STAGE 2: Lantern Riddles --- */
+    let s2Index = 0;
+    function renderStage2(container) {
+      s2Index = 0;
+      startStageTimer(35, () => finishStage2());
+      showStage2Riddle(container);
+    }
+
+    function showStage2Riddle(container) {
+      if (s2Index >= stage2ActiveData.length) {
+        finishStage2();
+        return;
+      }
+      const r = stage2ActiveData[s2Index];
+      // 隨機洗牌選項
+      const shuffledOptions = shuffleArray(r.options);
+
+      container.innerHTML = `
+        <div>
+          <div class="text-amber-300 text-sm font-semibold mb-1"><i class="fa-solid fa-lightbulb"></i> 第 2 關：應景燈謎大猜霸 (${s2Index + 1}/${stage2ActiveData.length})</div>
+          
+          <div class="bg-amber-500/10 border border-amber-400/40 rounded-2xl p-5 my-3 text-center">
+            <div class="text-amber-300 font-festive text-2xl md:text-3xl tracking-wide mb-2">🏮 燈謎 🏮</div>
+            <div class="text-xl md:text-2xl font-bold text-white">${r.riddle}</div>
+            <div class="text-xs text-amber-200/70 mt-2">${r.hint}</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mt-4">
+            ${shuffledOptions.map((opt) => `
+              <button onclick="checkStage2Answer('${opt}')" class="bg-slate-800/80 hover:bg-amber-500/20 border border-amber-400/30 hover:border-amber-400 text-amber-100 font-bold py-3 px-4 rounded-xl transition text-center">
+                ${opt}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function checkStage2Answer(selected) {
+      const r = stage2ActiveData[s2Index];
+      if (selected === r.answer) {
+        playSound('correct');
+        userProfile.score += 120 + Math.max(0, timeLeft * 2);
+        updateScoreDisplay();
+      } else {
+        playSound('wrong');
+      }
+      s2Index++;
+      const container = document.getElementById('stageContainer');
+      showStage2Riddle(container);
+    }
+
+    function finishStage2() {
+      clearIntervals();
+      nextStageTransition("燈謎成功解開！進入烘焙工坊！", 3);
+    }
+
+    /* --- STAGE 3: Mooncake Sequence Sorting --- */
+    let currentStepsOrder = [];
+    let correctStepOrderIds = [1, 2, 3, 4, 5];
+
+    function renderStage3(container) {
+      // 隨機打亂初始顯示順序
+      currentStepsOrder = shuffleArray(stage3ActiveRecipe.steps);
+      startStageTimer(45, () => verifyStage3Order());
+
+      renderStage3UI(container);
+    }
+
+    function renderStage3UI(container) {
+      container.innerHTML = `
+        <div>
+          <div class="text-amber-300 text-sm font-semibold mb-1"><i class="fa-solid fa-wheat-awn"></i> 第 3 關：${stage3ActiveRecipe.title} (請調整正確順序)</div>
+          <p class="text-gray-300 text-xs mb-3">使用 ▲ 與 ▼ 按鈕將製作步驟排列成正確先後順序：</p>
+
+          <div class="space-y-2 mb-4" id="stepsList">
+            ${currentStepsOrder.map((step, idx) => `
+              <div class="bg-slate-800/90 border border-amber-400/30 rounded-xl p-3 flex items-center justify-between gap-2">
+                <span class="bg-amber-400/20 text-amber-300 font-black rounded-lg w-7 h-7 flex items-center justify-center text-sm shrink-0">
+                  ${idx + 1}
+                </span>
+                <span class="text-sm font-semibold text-gray-200 flex-1">${step.text}</span>
+                <div class="flex flex-col gap-1">
+                  <button onclick="moveStep(${idx}, -1)" class="bg-slate-700 hover:bg-amber-500 hover:text-slate-900 text-gray-300 w-7 h-6 rounded flex items-center justify-center text-xs transition ${idx === 0 ? 'opacity-30 cursor-not-allowed' : ''}">▲</button>
+                  <button onclick="moveStep(${idx}, 1)" class="bg-slate-700 hover:bg-amber-500 hover:text-slate-900 text-gray-300 w-7 h-6 rounded flex items-center justify-center text-xs transition ${idx === currentStepsOrder.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}">▼</button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <button onclick="verifyStage3Order()" class="btn-gold w-full py-3 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg">
+            <i class="fa-solid fa-check"></i> 確認烘焙順序
+          </button>
+        </div>
+      `;
+    }
+
+    function moveStep(index, direction) {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= currentStepsOrder.length) return;
+      
+      const temp = currentStepsOrder[index];
+      currentStepsOrder[index] = currentStepsOrder[targetIndex];
+      currentStepsOrder[targetIndex] = temp;
+
+      renderStage3UI(document.getElementById('stageContainer'));
+    }
+
+    function verifyStage3Order() {
+      clearIntervals();
+      let correctCount = 0;
+      currentStepsOrder.forEach((step, idx) => {
+        if (step.id === correctStepOrderIds[idx]) correctCount++;
+      });
+
+      if (correctCount === 5) {
+        playSound('correct');
+        userProfile.score += 200 + Math.max(0, timeLeft * 3);
+      } else {
+        playSound('wrong');
+        userProfile.score += correctCount * 30;
+      }
+      updateScoreDisplay();
+
+      nextStageTransition(`烘焙完成！正確對應 ${correctCount}/5 步驟！`, 4);
+    }
+
+    /* --- STAGE 4: Poetry Gap-Fill --- */
+    let s4Index = 0;
+    function renderStage4(container) {
+      s4Index = 0;
+      startStageTimer(30, () => finishStage4());
+      showStage4Poetry(container);
+    }
+
+    function showStage4Poetry(container) {
+      if (s4Index >= stage4ActiveData.length) {
+        finishStage4();
+        return;
+      }
+      const p = stage4ActiveData[s4Index];
+      const shuffledOptions = shuffleArray(p.options);
+
+      container.innerHTML = `
+        <div>
+          <div class="text-amber-300 text-sm font-semibold mb-1"><i class="fa-solid fa-pen-nib"></i> 第 4 關：飛花令中秋經典詩詞 (${s4Index + 1}/${stage4ActiveData.length})</div>
+          
+          <div class="bg-amber-500/10 border border-amber-400/40 rounded-2xl p-5 my-4 text-center">
+            <div class="text-xs text-amber-300/80 mb-1">【${p.title}】</div>
+            <div class="text-2xl font-bold text-amber-100 font-festive tracking-wider">${p.poem}</div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mt-4">
+            ${shuffledOptions.map((opt) => `
+              <button onclick="checkStage4Answer('${opt}')" class="bg-slate-800/80 hover:bg-amber-500/20 border border-amber-400/30 hover:border-amber-400 text-white font-bold py-3 px-4 rounded-xl transition">
+                ${opt}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function checkStage4Answer(selected) {
+      const p = stage4ActiveData[s4Index];
+      if (selected === p.answer) {
+        playSound('correct');
+        userProfile.score += 150 + Math.max(0, timeLeft * 2);
+        updateScoreDisplay();
+      } else {
+        playSound('wrong');
+      }
+      s4Index++;
+      const container = document.getElementById('stageContainer');
+      showStage4Poetry(container);
+    }
+
+    function finishStage4() {
+      clearIntervals();
+      nextStageTransition("文采斐然！準備協助玉兔搗藥！", 5);
+    }
+
+    /* --- STAGE 5: Jade Rabbit Mortar Tapping --- */
+    function renderStage5(container) {
+      stage5Taps = 0;
+      startStageTimer(10, () => finishStage5());
+
+      container.innerHTML = `
+        <div class="text-center">
+          <div class="text-amber-300 text-sm font-semibold mb-1"><i class="fa-solid fa-bolt"></i> 第 5 關：玉兔搗藥限時手速挑戰！</div>
+          <p class="text-gray-300 text-xs mb-3">請在 10 秒內瘋狂點擊/觸控下方大玉兔，搗藥次數越多分數越高！</p>
+
+          <div class="my-4 relative">
+            <button id="btnPound" onclick="poundMortar()" class="w-40 h-40 md:w-48 md:h-48 rounded-full bg-gradient-to-b from-amber-200 to-amber-500 border-4 border-amber-300 shadow-2xl mx-auto flex flex-col items-center justify-center active:scale-95 transition-transform cursor-pointer relative overflow-hidden group">
+              <span id="rabbitIcon" class="text-6xl md:text-7xl pointer-events-none select-none">🐇</span>
+              <span class="text-purple-950 font-black text-sm md:text-base mt-1 pointer-events-none">快速點擊搗藥！</span>
+            </button>
+          </div>
+
+          <div class="text-2xl font-black text-amber-300">
+            搗藥次數：<span id="lblTapCount" class="text-4xl text-amber-400">0</span> 次
+          </div>
+        </div>
+      `;
+    }
+
+    function poundMortar() {
+      stage5Taps++;
+      document.getElementById('lblTapCount').innerText = stage5Taps;
+      playSound('pound');
+
+      const rabbit = document.getElementById('rabbitIcon');
+      rabbit.classList.remove('animate-pound');
+      void rabbit.offsetWidth; // Trigger reflow
+      rabbit.classList.add('animate-pound');
+    }
+
+    function finishStage5() {
+      clearIntervals();
+      const tapBonus = stage5Taps * 15;
+      userProfile.score += tapBonus;
+      updateScoreDisplay();
+
+      playSound('win');
+      endGame();
+    }
+
+    /* TRANSITION & TIMER HELPERS */
+
+    function startStageTimer(seconds, onExpire) {
+      timeLeft = seconds;
+      document.getElementById('lblTimer').innerText = `${timeLeft}s`;
+
+      stageTimer = setInterval(() => {
+        timeLeft--;
+        document.getElementById('lblTimer').innerText = `${timeLeft}s`;
+
+        if (timeLeft <= 0) {
+          clearInterval(stageTimer);
+          if (onExpire) onExpire();
+        }
+      }, 1000);
+    }
+
+    function nextStageTransition(message, nextStage) {
+      const container = document.getElementById('stageContainer');
+      container.innerHTML = `
+        <div class="text-center py-12 space-y-4">
+          <div class="text-4xl">🌟</div>
+          <h3 class="text-2xl font-bold text-amber-300">${message}</h3>
+          <p class="text-gray-300 text-sm">即將進入下一關卡...</p>
+        </div>
+      `;
+      setTimeout(() => {
+        loadStage(nextStage);
+      }, 1800);
+    }
+
+    /* GAME OVER & LEADERBOARD LOGIC */
+
+    async function endGame() {
+      document.getElementById('viewGame').classList.add('hidden');
+      document.getElementById('viewResult').classList.remove('hidden');
+
+      const score = userProfile.score;
+      document.getElementById('finalScore').innerText = score;
+
+      // Assign Title
+      let title = "月宮探險實習生 🏮";
+      if (userProfile.isSecretUnlocked && score >= 1000) title = "月宮隱藏傳說大宗師 🌟";
+      else if (score >= 900) title = "中秋神話大宗師 🌕";
+      else if (score >= 700) title = "月宮首席智多星 🐰";
+      else if (score >= 500) title = "搗藥神手小玉兔 🥮";
+
+      document.getElementById('playerTitle').innerText = title;
+
+      // Save to Leaderboard
+      await saveScoreToLeaderboard(userProfile.name, score);
+    }
+
+    async function saveScoreToLeaderboard(name, score) {
+      const entry = {
+        name: name,
+        score: score,
+        date: new Date().toLocaleDateString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+      };
+
+      // 1. LocalStorage Persistence
+      let localData = JSON.parse(localStorage.getItem('midautumn_leaderboard') || '[]');
+      
+      // Update best score for same name or append
+      const existingIdx = localData.findIndex(item => item.name === name);
+      if (existingIdx >= 0) {
+        if (score > localData[existingIdx].score) {
+          localData[existingIdx] = entry;
+        }
+      } else {
+        localData.push(entry);
+      }
+
+      localData.sort((a, b) => b.score - a.score);
+      localData = localData.slice(0, 10); // Keep top 10
+
+      localStorage.setItem('midautumn_leaderboard', JSON.stringify(localData));
+
+      // 2. Cloud Firestore Persistence (if available)
+      if (window.remoteDb && window.appId) {
+        try {
+          const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+          const colRef = collection(window.remoteDb, 'artifacts', window.appId, 'public', 'data', 'leaderboard');
+          await addDoc(colRef, entry);
+        } catch (e) {
+          console.warn("Cloud save omitted:", e);
+        }
+      }
+    }
+
+    async function openLeaderboard() {
+      const modal = document.getElementById('modalLeaderboard');
+      const list = document.getElementById('leaderboardList');
+      modal.classList.remove('hidden');
+
+      list.innerHTML = `<div class="text-center py-6 text-gray-400">載入榜單資料中...</div>`;
+
+      let data = JSON.parse(localStorage.getItem('midautumn_leaderboard') || '[]');
+
+      // Fetch cloud data if online
+      if (window.remoteDb && window.appId) {
+        try {
+          const { collection, getDocs } = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+          const colRef = collection(window.remoteDb, 'artifacts', window.appId, 'public', 'data', 'leaderboard');
+          const snap = await getDocs(colRef);
+          
+          let cloudData = [];
+          snap.forEach(doc => cloudData.push(doc.data()));
+
+          if (cloudData.length > 0) {
+            // Deduplicate best scores
+            const mergedMap = new Map();
+            [...data, ...cloudData].forEach(item => {
+              if (!mergedMap.has(item.name) || item.score > mergedMap.get(item.name).score) {
+                mergedMap.set(item.name, item);
+              }
+            });
+            data = Array.from(mergedMap.values());
+            data.sort((a, b) => b.score - a.score);
+            data = data.slice(0, 10);
+          }
+        } catch (e) {
+          console.warn("Cloud fetch fallback to local:", e);
+        }
+      }
+
+      if (data.length === 0) {
+        list.innerHTML = `<div class="text-center py-8 text-gray-400">目前尚無紀錄，快成為第一位闖關者吧！</div>`;
+        return;
+      }
+
+      list.innerHTML = data.map((item, index) => {
+        let badge = `<span class="font-bold text-gray-400 w-6">${index + 1}</span>`;
+        if (index === 0) badge = `<span class="text-xl">🥇</span>`;
+        else if (index === 1) badge = `<span class="text-xl">🥈</span>`;
+        else if (index === 2) badge = `<span class="text-xl">🥉</span>`;
+
+        return `
+          <div class="flex items-center justify-between p-3 my-1 rounded-xl bg-slate-800/60 border border-amber-400/20">
+            <div class="flex items-center gap-3">
+              ${badge}
+              <div>
+                <div class="font-bold text-amber-200 text-sm md:text-base">${item.name}</div>
+                <div class="text-xs text-gray-400">${item.date || ''}</div>
+              </div>
+            </div>
+            <div class="text-amber-400 font-extrabold text-lg md:text-xl">${item.score} <span class="text-xs text-gray-400">分</span></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function closeLeaderboard() {
+      document.getElementById('modalLeaderboard').classList.add('hidden');
+    }
+
+    function showCustomAlert(msg) {
+      const div = document.createElement('div');
+      div.className = 'fixed top-10 left-1/2 -translate-x-1/2 z-50 bg-amber-500 text-purple-950 font-extrabold px-6 py-3 rounded-2xl shadow-2xl border-2 border-amber-200 animate-bounce text-sm';
+      div.innerText = msg;
+      document.body.appendChild(div);
+      setTimeout(() => div.remove(), 2500);
+    }
+
+    /* CANVAS BACKGROUND ANIMATION */
+    function initCanvas() {
+      const canvas = document.getElementById('bgCanvas');
+      const ctx = canvas.getContext('2d');
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      const stars = Array.from({ length: 60 }, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        radius: Math.random() * 1.8 + 0.5,
+        alpha: Math.random(),
+        speed: Math.random() * 0.02 + 0.005
+      }));
+
+      const lanterns = Array.from({ length: 6 }, () => ({
+        x: Math.random() * canvas.width,
+        y: canvas.height + Math.random() * 100,
+        speed: Math.random() * 0.5 + 0.3,
+        size: Math.random() * 12 + 16
+      }));
+
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw twinkling stars
+        stars.forEach(s => {
+          s.alpha += s.speed;
+          if (s.alpha > 1 || s.alpha < 0) s.speed = -s.speed;
+          ctx.fillStyle = `rgba(253, 224, 71, ${Math.abs(s.alpha)})`;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Draw floating sky lanterns
+        lanterns.forEach(l => {
+          l.y -= l.speed;
+          if (l.y < -50) {
+            l.y = canvas.height + 50;
+            l.x = Math.random() * canvas.width;
+          }
+          ctx.font = `${l.size}px serif`;
+          ctx.fillText('🏮', l.x, l.y);
+        });
+
+        requestAnimationFrame(animate);
+      }
+      animate();
+    }
+
+    window.onload = function() {
+      initCanvas();
+      if (window.initFirebase) window.initFirebase();
+    };
+  </script>
+</body>
+</html>
